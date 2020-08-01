@@ -2,19 +2,40 @@
 #include <stdio.h>
 
 #include <SDL/SDL_mixer.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "main.h"
+#include "state_mainmenu.h"
 #include "sound.h"
 #include "video.h"
 #include "data_persistence.h"
 #include "randomizer.h"
 
-#define HISCORE_PATH		"hiscore.dat"
-#define SETTINGS_PATH		"settings.txt"
+#define GAMEDIR				".yatka"
+#define HISCORE_FILE		"hiscore.dat"
+#define SETTINGS_FILE		"settings.txt"
+
+static char dirpath[256];
+static char hiscore_path[256];
+static char settings_path[256];
+
+static void createGameDir(void)
+{
+	mkdir(dirpath, 0744);
+}
+
+void initPaths(void)
+{
+	const char *home = getenv("HOME");
+	sprintf(dirpath, "%s/%s", home, GAMEDIR);
+	sprintf(hiscore_path, "%s/%s", dirpath, HISCORE_FILE);
+	sprintf(settings_path, "%s/%s", dirpath, SETTINGS_FILE);
+}
 
 int loadHiscore(void)
 {
-	FILE *hifile = fopen(HISCORE_PATH, "r");
+	FILE *hifile = fopen(hiscore_path, "r");
 	if (hifile)
 	{
 		int hi = 0;
@@ -28,7 +49,8 @@ int loadHiscore(void)
 
 void saveHiscore(int hi)
 {
-	FILE *hifile = fopen(HISCORE_PATH, "w");
+	createGameDir();
+	FILE *hifile = fopen(hiscore_path, "w");
 	if (hifile)
 	{
 		fprintf(hifile, "%d", hi);
@@ -39,7 +61,7 @@ void saveHiscore(int hi)
 void loadSettings(void)
 {
 	char buff[256];
-	FILE *settingsFile = fopen(SETTINGS_PATH, "r");
+	FILE *settingsFile = fopen(settings_path, "r");
 	if (!settingsFile)
 		return;
 
@@ -54,12 +76,12 @@ void loadSettings(void)
 			easyspin = true;
 		else if (!strcmp(buff, "lockdelay"))
 			lockdelay = true;
-		else if (!strcmp(buff, "numericbars"))
-			numericbars = true;
 		else if (!strcmp(buff, "repeattrack"))
 			repeattrack = true;
-		else if (!strcmp(buff, "debug"))
-			debug = true;
+		else if (!strcmp(buff, "fullscreen"))
+			screenscale = 0;
+		else if (!strcmp(buff, "scale1x"))
+			screenscale = 1;
 		else if (!strcmp(buff, "scale2x"))
 			screenscale = 2;
 		else if (!strcmp(buff, "scale3x"))
@@ -68,31 +90,13 @@ void loadSettings(void)
 			screenscale = 4;
 		else if (!strcmp(buff, "holdoff"))
 			holdoff = true;
-		else if (!strcmp(buff, "grayblocks"))
-			grayblocks = true;
 		else if (!strcmp(buff, "musicvol"))
 		{
 			fscanf(settingsFile, "%d", &initmusvol);
 		}
-		else if (!strcmp(buff, "ghostalpha"))
-		{
-			fscanf(settingsFile, "%d", &ghostalpha);
-		}
 		else if (!strcmp(buff, "tetrominocolor"))
 		{
 			fscanf(settingsFile, "%d", &tetrominocolor);
-		}
-		else if (!strcmp(buff, "tetrominostyle"))
-		{
-			fscanf(settingsFile, "%d", &tetrominostyle);
-		}
-		else if (!strcmp(buff, "startlevel"))
-		{
-			fscanf(settingsFile, "%d", &startlevel);
-		}
-		else if (!strcmp(buff, "nextblocks"))
-		{
-			fscanf(settingsFile, "%d", &nextblocks);
 		}
 		else if (!strcmp(buff,"rng"))
 		{
@@ -111,7 +115,8 @@ void loadSettings(void)
 
 void saveSettings(void)
 {
-	FILE *settingsFile = fopen(SETTINGS_PATH, "w");
+	createGameDir();
+	FILE *settingsFile = fopen(settings_path, "w");
 
 	if (nosound)
 		fprintf(settingsFile, "nosound\n");
@@ -121,10 +126,12 @@ void saveSettings(void)
 		fprintf(settingsFile, "easyspin\n");
 	if (lockdelay)
 		fprintf(settingsFile, "lockdelay\n");
-	if (numericbars)
-		fprintf(settingsFile, "numericbars\n");
 	if (repeattrack)
 		fprintf(settingsFile, "repeattrack\n");
+	if (0 == screenscale)
+		fprintf(settingsFile, "fullscreen\n");
+	if (1 == screenscale)
+		fprintf(settingsFile, "scale1x\n");
 	if (2 == screenscale)
 		fprintf(settingsFile, "scale2x\n");
 	if (3 == screenscale)
@@ -133,17 +140,9 @@ void saveSettings(void)
 		fprintf(settingsFile, "scale4x\n");
 	if (holdoff)
 		fprintf(settingsFile, "holdoff\n");
-	if (grayblocks)
-		fprintf(settingsFile, "grayblocks\n");
-	if (debug)
-		fprintf(settingsFile, "debug\n");
 	if (!nosound)
 		fprintf(settingsFile, "musicvol %d\n", Mix_VolumeMusic(-1));
-	fprintf(settingsFile, "ghostalpha %d\n", ghostalpha);
 	fprintf(settingsFile, "tetrominocolor %d\n", tetrominocolor);
-	fprintf(settingsFile, "tetrominostyle %d\n", tetrominostyle);
-	fprintf(settingsFile, "startlevel %d\n", startlevel);
-	fprintf(settingsFile, "nextblocks %d\n", nextblocks);
 	fprintf(settingsFile, "rng %s\n", getRandomizerString());
 
 	fclose(settingsFile);

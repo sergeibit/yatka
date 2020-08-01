@@ -6,10 +6,12 @@
 #include <SDL/SDL_mixer.h>
 
 #include "state_settings.h"
+#include "joystick.h"
 #include "main.h"
 #include "video.h"
 #include "sound.h"
 #include "randomizer.h"
+#include "skin.h"
 
 enum SettingsLine
 {
@@ -17,16 +19,10 @@ enum SettingsLine
 	SL_MUSIC_VOL,
 	SL_MUSIC_REPEAT,
 	SL_SMOOTHANIM,
-	SL_TETROMINO_STYLE,
 	SL_TETROMINO_COLOR,
-	SL_DEBRIS_COLOR,
 	SL_EASYSPIN,
 	SL_LOCKDELAY,
-	SL_GHOST,
-	SL_STATISTICS,
-	SL_NEXT_NUMBER,
 	SL_RANDOMIZER,
-	SL_DEBUG,
 	SL_END
 };
 
@@ -39,19 +35,20 @@ static const char settings_text[][32] = {
 	"  music volume              %d",
 	"  repeat mode               %s",
 	"  smooth animation          %s",
-	"  tetromino style           %s",
 	"  tetromino color           %s",
-	"  debris color              %s",
 	"  easy spin                 %s",
 	"  fixed lock delay          %s",
-	"  ghost opacity             %d",
-	"  statistics mode           %s",
-	"  no of next tetrominoes    %d",
 	"  tetromino randomizer      %s",
-	"  debug mode                %s"
 };
 
 static char *generateSettingLine(char *buff, int pos);
+
+static void up(void);
+static void down(void);
+static void left(void);
+static void right(void);
+static void quit(void);
+static void action(void);
 
 void settings_updateScreen(void)
 {
@@ -91,6 +88,135 @@ void settings_updateScreen(void)
 	flipScreenScaled();
 }
 
+static void up(void)
+{
+	decMod(&settings_pos, SL_END, false);
+}
+
+static void down(void)
+{
+	incMod(&settings_pos, SL_END, false);
+}
+
+static void left(void)
+{
+	switch (settings_pos)
+	{
+		case SL_TRACK_SELECT:
+		{
+			decMod(&current_track, MUSIC_TRACK_NUM, false);
+			Mix_PlayMusic(music[current_track], 1);
+		} break;
+		case SL_MUSIC_VOL:
+		{
+			int vol = Mix_VolumeMusic(-1);
+			vol -= 1;
+			if (vol < 0)
+				vol = 0;
+			Mix_VolumeMusic(vol);
+			settings_changed = true;
+		} break;
+		case SL_MUSIC_REPEAT:
+		{
+			repeattrack = !repeattrack;
+			settings_changed = true;
+		} break;
+		case SL_SMOOTHANIM:
+		{
+			smoothanim = !smoothanim;
+			settings_changed = true;
+		} break;
+		case SL_TETROMINO_COLOR:
+		{
+			decMod((int*)&tetrominocolor, TC_END, false);
+			settings_changed = true;
+		} break;
+		case SL_EASYSPIN:
+		{
+			easyspin = !easyspin;
+			settings_changed = true;
+		} break;
+		case SL_LOCKDELAY:
+		{
+			lockdelay = !lockdelay;
+			settings_changed = true;
+		} break;
+		case SL_RANDOMIZER:
+		{
+			decMod((int*)&randomalgo, RA_END, false);
+			settings_changed = true;
+		} break;
+		default:
+			break;
+	}
+}
+
+static void right(void)
+{
+	switch (settings_pos)
+	{
+		case SL_TRACK_SELECT:
+		{
+			incMod(&current_track, MUSIC_TRACK_NUM, false);
+			Mix_PlayMusic(music[current_track], 1);
+		} break;
+		case SL_MUSIC_VOL:
+		{
+			int vol = Mix_VolumeMusic(-1);
+			vol += 1;
+			Mix_VolumeMusic(vol);
+			settings_changed = true;
+		} break;
+		case SL_MUSIC_REPEAT:
+		{
+			repeattrack = !repeattrack;
+			settings_changed = true;
+		} break;
+		case SL_SMOOTHANIM:
+		{
+			smoothanim = !smoothanim;
+			settings_changed = true;
+		} break;
+		case SL_TETROMINO_COLOR:
+		{
+			incMod((int*)&tetrominocolor, TC_END, false);
+			settings_changed = true;
+		} break;
+		case SL_EASYSPIN:
+		{
+			easyspin = !easyspin;
+			settings_changed = true;
+		} break;
+		case SL_LOCKDELAY:
+		{
+			lockdelay = !lockdelay;
+			settings_changed = true;
+		} break;
+		case SL_RANDOMIZER:
+		{
+			incMod((int*)&randomalgo, RA_END, false);
+			settings_changed = true;
+		} break;
+		default:
+			break;
+	}
+}
+
+static void quit(void)
+{
+	gamestate = GS_MAINMENU;
+}
+
+static void action(void)
+{
+	gamestate = GS_INGAME;
+	if (redraw_bg)
+	{
+		skin_updateBackground(&gameskin);
+		redraw_bg = false;
+	}
+}
+
 void settings_processInputEvents(void)
 {
 	SDL_Event event;
@@ -98,196 +224,60 @@ void settings_processInputEvents(void)
 	if (SDL_WaitEvent(&event))
 		switch (event.type)
 		{
+			case SDL_JOYAXISMOTION:
+				if ((event.jaxis.value < -JOY_THRESHOLD) || (event.jaxis.value > JOY_THRESHOLD))
+				{
+					if(event.jaxis.axis == 0)
+					{
+						if (event.jaxis.value < 0)
+							left();
+						else
+							right();
+					}
+
+					if(event.jaxis.axis == 1)
+					{
+						if (event.jaxis.value < 0)
+							up();
+						else
+							down();
+					}
+				}
+				break;
+			case SDL_JOYBUTTONDOWN:
+				if (event.jbutton.button == JOY_PAUSE)
+				{
+					action();
+				}
+				if (event.jbutton.button == JOY_QUIT)
+				{
+					quit();
+				}
+				break;
 			case SDL_KEYDOWN:
 				switch (event.key.keysym.sym)
 				{
 					case SDLK_UP:
 					{
-						decMod(&settings_pos, SL_END, false);
+						up();
 					} break;
 					case SDLK_DOWN:
 					{
-						incMod(&settings_pos, SL_END, false);
+						down();
 					} break;
 					case SDLK_LEFT:
 					{
-						switch (settings_pos)
-						{
-							case SL_TRACK_SELECT:
-							{
-								decMod(&current_track, MUSIC_TRACK_NUM, false);
-								Mix_PlayMusic(music[current_track], 1);
-							} break;
-							case SL_MUSIC_VOL:
-							{
-								int vol = Mix_VolumeMusic(-1);
-								vol -= 1;
-								if (vol < 0)
-									vol = 0;
-								Mix_VolumeMusic(vol);
-								settings_changed = true;
-							} break;
-							case SL_MUSIC_REPEAT:
-							{
-								repeattrack = !repeattrack;
-								settings_changed = true;
-							} break;
-							case SL_SMOOTHANIM:
-							{
-								smoothanim = !smoothanim;
-								settings_changed = true;
-							} break;
-							case SL_TETROMINO_COLOR:
-							{
-								decMod((int*)&tetrominocolor, TC_END, false);
-								settings_changed = true;
-							} break;
-							case SL_TETROMINO_STYLE:
-							{
-								decMod((int*)&tetrominostyle, TS_END, false);
-								redraw_bg = true;
-								settings_changed = true;
-							} break;
-							case SL_DEBRIS_COLOR:
-							{
-								grayblocks = !grayblocks;
-								settings_changed = true;
-							} break;
-							case SL_EASYSPIN:
-							{
-								easyspin = !easyspin;
-								settings_changed = true;
-							} break;
-							case SL_LOCKDELAY:
-							{
-								lockdelay = !lockdelay;
-								settings_changed = true;
-							} break;
-							case SL_GHOST:
-							{
-								decMod(&ghostalpha, 256, true);
-								settings_changed = true;
-							} break;
-							case SL_STATISTICS:
-							{
-								numericbars = !numericbars;
-								settings_changed = true;
-							} break;
-							case SL_NEXT_NUMBER:
-							{
-								decMod(&nextblocks, MAX_NEXTBLOCKS + 1, true);
-								redraw_bg = true;
-								settings_changed = true;
-							} break;
-							case SL_RANDOMIZER:
-							{
-								decMod((int*)&randomalgo, RA_END, false);
-								settings_changed = true;
-							} break;
-							case SL_DEBUG:
-							{
-								debug = !debug;
-								settings_changed = true;
-							} break;
-							default:
-								break;
-						}
+						left();
 					} break;
 					case SDLK_RIGHT:
 					{
-						switch (settings_pos)
-						{
-							case SL_TRACK_SELECT:
-							{
-								incMod(&current_track, MUSIC_TRACK_NUM, false);
-								Mix_PlayMusic(music[current_track], 1);
-							} break;
-							case SL_MUSIC_VOL:
-							{
-								int vol = Mix_VolumeMusic(-1);
-								vol += 1;
-								Mix_VolumeMusic(vol);
-								settings_changed = true;
-							} break;
-							case SL_MUSIC_REPEAT:
-							{
-								repeattrack = !repeattrack;
-								settings_changed = true;
-							} break;
-							case SL_SMOOTHANIM:
-							{
-								smoothanim = !smoothanim;
-								settings_changed = true;
-							} break;
-							case SL_TETROMINO_COLOR:
-							{
-								incMod((int*)&tetrominocolor, TC_END, false);
-								settings_changed = true;
-							} break;
-							case SL_TETROMINO_STYLE:
-							{
-								incMod((int*)&tetrominostyle, TS_END, false);
-								redraw_bg = true;
-								settings_changed = true;
-							} break;
-							case SL_DEBRIS_COLOR:
-							{
-								grayblocks = !grayblocks;
-								settings_changed = true;
-							} break;
-							case SL_EASYSPIN:
-							{
-								easyspin = !easyspin;
-								settings_changed = true;
-							} break;
-							case SL_LOCKDELAY:
-							{
-								lockdelay = !lockdelay;
-								settings_changed = true;
-							} break;
-							case SL_GHOST:
-							{
-								incMod(&ghostalpha, 256, true);
-								settings_changed = true;
-							} break;
-							case SL_STATISTICS:
-							{
-								numericbars = !numericbars;
-								settings_changed = true;
-							} break;
-							case SL_NEXT_NUMBER:
-							{
-								incMod(&nextblocks, MAX_NEXTBLOCKS + 1, true);
-								redraw_bg = true;
-								settings_changed = true;
-							} break;
-							case SL_RANDOMIZER:
-							{
-								incMod((int*)&randomalgo, RA_END, false);
-								settings_changed = true;
-							} break;
-							case SL_DEBUG:
-							{
-								debug = !debug;
-								settings_changed = true;
-							} break;
-							default:
-								break;
-						}
+						right();
 					} break;
 					case KEY_QUIT:
-					{
-						SDL_Event ev;
-						ev.type = SDL_QUIT;
-						SDL_PushEvent(&ev);
-					} break;
+						quit();
+						break;
 					case KEY_PAUSE:
-						gamestate = GS_INGAME;
-						if (redraw_bg)
-						{
-							initBackground();
-							redraw_bg = false;
-						}
+						action();
 						break;
 				}
 				break;
@@ -323,23 +313,11 @@ static char *generateSettingLine(char *buff, int pos)
 		{
 			static char *tc_strings[] = {
 				"random",
-				"piecewise",
+				"tengen",
+				"standard",
 				"gray"
 			};
 			sprintf(buff, settings_text[pos], tc_strings[tetrominocolor]);
-		} break;
-		case SL_TETROMINO_STYLE:
-		{
-			static char *ts_strings[] = {
-				"legacy",
-				"plain",
-				"tengenish"
-			};
-			sprintf(buff, settings_text[pos], ts_strings[tetrominostyle]);
-		} break;
-		case SL_DEBRIS_COLOR:
-		{
-			sprintf(buff, settings_text[pos], grayblocks ? "gray" : "original");
 		} break;
 		case SL_EASYSPIN:
 		{
@@ -349,25 +327,9 @@ static char *generateSettingLine(char *buff, int pos)
 		{
 			sprintf(buff, settings_text[pos], lockdelay ? "on" : "off");
 		} break;
-		case SL_GHOST:
-		{
-			sprintf(buff, settings_text[pos], ghostalpha);
-		} break;
-		case SL_STATISTICS:
-		{
-			sprintf(buff, settings_text[pos], numericbars ? "numbers" : "bars");
-		} break;
-		case SL_NEXT_NUMBER:
-		{
-			sprintf(buff, settings_text[pos], nextblocks);
-		} break;
 		case SL_RANDOMIZER:
 		{
 			sprintf(buff, settings_text[pos], getRandomizerString());
-		} break;
-		case SL_DEBUG:
-		{
-			sprintf(buff, settings_text[pos], debug ? "on" : "off");
 		} break;
 		default:
 			break;

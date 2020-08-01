@@ -7,11 +7,15 @@
 
 #define SCREEN_WIDTH		320
 #define SCREEN_HEIGHT		240
-#define FPS					60.0
+// fps limit off
+#define FPS					6000.0
 
-#ifdef _BITTBOY
+#if defined _BITTBOY
 #define SCREEN_BPP			16
 #define VIDEO_MODE_FLAGS	SDL_SWSURFACE
+#elif defined _RETROFW
+#define SCREEN_BPP			16
+#define VIDEO_MODE_FLAGS	(SDL_HWSURFACE | SDL_DOUBLEBUF)
 #else
 #define SCREEN_BPP			32
 #define VIDEO_MODE_FLAGS	(SDL_HWSURFACE | SDL_DOUBLEBUF)
@@ -26,7 +30,6 @@ extern int fps;
 
 void saveLastGameScreen(void);
 void flipScreenScaled(void);
-bool screenFlagUpdate(bool v);
 void upscale2(uint32_t *to, uint32_t *from);
 void upscale3(uint32_t *to, uint32_t *from);
 void upscale4(uint32_t *to, uint32_t *from);

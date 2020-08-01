@@ -2,10 +2,8 @@
 yet another tetris klone in action
 
 ### about
-- gfx and code (mostly) by me
-- background image taken from Berserk manga
+- gfx and code (mostly) by me (vamastah a.k.a. szymor)
 - frame limiting, counting and upscaling code by Artur 'zear' Rojek
-- arcade font by Yuji Adachi
 - in-game music by Vomitron
 
 Feel free to report errors.
@@ -19,26 +17,26 @@ Feel free to report errors.
 
 ### command line parameters
 - --nosound - disable music and sound effects
+- --sound - enable music and sound effects if disabled
+- --fullscreen - full screen mode
+- --scale1x - 320x240 mode
 - --scale2x - 640x480 mode
 - --scale3x - 960x720 mode
 - --scale4x - 1280x960 mode
-- --holdoff - disable HOLD function
 - --startlevel <num> - the higher level, the higher speed
 
 For more, please refer to the source code.
 
 ### ideas / plans
-- animated mascot (becchi?) evolving while playing
-- main menu
-- better support for PC (e.g. joystick support, fullscreen mode)
+- animated mascot (becchi?) evolving while playing or saying random things during gameplay
 - better score system (combos, T-spins)
 - advanced wall kick
 - rumble support for Bittboy
 - line clear animation (TGM?)
-- introducing fixed drop delay for left/right movements when easy spin mode is enabled
-- game save
 - ports for other platforms
 - introducing max speed level
-- customizable starting debris
-- customizable starting level from main menu
-- selectable direction of rotation for main and auxiliary rotation buttons
+- key configuration
+- fixed easy spin
+- more randomizers
+- tetromino color defined per skin
+- precolored (no dyeing) brick support
